@@ -18,7 +18,7 @@ const path_1 = __importDefault(require("path"));
 const cors_1 = __importDefault(require("cors"));
 // 初始化 Express
 const app = (0, express_1.default)();
-const PORT = 3000;
+const PORT = 3001;
 // Middleware
 app.use(express_1.default.json()); // 處理 JSON 請求
 app.use((0, cors_1.default)()); // 啟用 CORS

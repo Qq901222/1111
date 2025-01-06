@@ -5,12 +5,12 @@ import cors from 'cors';
 
 // 初始化 Express
 const app: Application = express();
-const PORT = 3000;
+const PORT = 3001;
 
 // Middleware
-app.use(express.json()); // 處理 JSON 請求
-app.use(cors()); // 啟用 CORS
-app.use(express.static(path.join(__dirname, 'client'))); // 提供靜態檔案
+app.use(express.json());
+app.use(cors());
+app.use(express.static(path.join(__dirname, 'client')));
 
 // MongoDB 連接設定
 const MONGO_URI = 'mongodb://localhost:27017/movie-ticket-system';
@@ -50,6 +50,19 @@ app.post('/api/movies', async (req, res) => {
     res.status(201).json({ message: '新增電影成功', data: savedMovie });
   } catch (err) {
     res.status(500).json({ message: '新增電影失敗', error: err });
+  }
+});
+
+app.put('/api/movies/:id', async (req, res) => {
+  try {
+    const updatedMovie = await Movie.findByIdAndUpdate(req.params.id, req.body, {
+      new: true, // 回傳更新後的文件
+      runValidators: true, // 確保資料符合 Schema
+    });
+    if (!updatedMovie) return res.status(404).json({ message: '找不到該電影' });
+    res.json({ message: '更新電影成功', data: updatedMovie });
+  } catch (err) {
+    res.status(500).json({ message: '更新電影失敗', error: err });
   }
 });
 

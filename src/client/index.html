@@ -56,20 +56,71 @@
     }
     .movie-card button {
       margin-top: 10px;
+      margin-right: 5px;
       padding: 5px 10px;
-      background-color: #dc3545;
       color: white;
       border: none;
       border-radius: 3px;
       cursor: pointer;
     }
-    .movie-card button:hover {
+    .delete-btn {
+      background-color: #dc3545;
+    }
+    .delete-btn:hover {
       background-color: #c82333;
+    }
+    .edit-btn {
+      background-color: #28a745;
+    }
+    .edit-btn:hover {
+      background-color: #218838;
+    }
+    .search-section {
+      margin: 20px 0;
+    }
+    .search-section input {
+      padding: 10px;
+      font-size: 16px;
+      width: 300px;
+      margin-right: 10px;
+    }
+    /* Modal styles */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+    }
+    .modal-content {
+      background-color: white;
+      margin: 15% auto;
+      padding: 20px;
+      border-radius: 5px;
+      width: 80%;
+      max-width: 600px;
+    }
+    .close {
+      float: right;
+      cursor: pointer;
+      font-size: 28px;
+    }
+    .close:hover {
+      color: #666;
     }
   </style>
 </head>
 <body>
   <h1>電影管理系統</h1>
+  
+  <!-- 搜尋區塊 -->
+  <section class="search-section">
+    <input type="text" id="searchInput" placeholder="搜尋電影名稱...">
+    <button onclick="searchMovies()">搜尋</button>
+  </section>
+
   <section>
     <h2>新增電影</h2>
     <form id="movieForm">
@@ -86,13 +137,42 @@
       <button type="submit">新增電影</button>
     </form>
   </section>
+
   <section class="movie-list" id="movieList">
     <h2>所有電影</h2>
   </section>
+
+  <!-- 編輯用 Modal -->
+  <div id="editModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeEditModal()">&times;</span>
+      <h2>編輯電影</h2>
+      <form id="editForm">
+        <input type="hidden" id="editId">
+        <label for="editTitle">電影名稱</label>
+        <input type="text" id="editTitle" required>
+        <label for="editDescription">描述</label>
+        <textarea id="editDescription" required></textarea>
+        <label for="editGenre">類型</label>
+        <input type="text" id="editGenre" required>
+        <label for="editPoster">海報連結</label>
+        <input type="text" id="editPoster">
+        <label for="editReleaseYear">上映年份 (四位數)</label>
+        <input type="number" id="editReleaseYear" required>
+        <button type="submit">儲存修改</button>
+      </form>
+    </div>
+  </div>
+
   <script>
-    async function fetchMovies() {
+    const modal = document.getElementById('editModal');
+
+    async function fetchMovies(searchTerm = '') {
       try {
-        const response = await fetch('http://localhost:3000/api/movies');
+        const url = searchTerm 
+          ? `http://localhost:3001/api/movies?search=${encodeURIComponent(searchTerm)}`
+          : 'http://localhost:3001/api/movies';
+        const response = await fetch(url);
         if (!response.ok) throw new Error('無法獲取電影列表');
         const movies = await response.json();
         const movieList = document.getElementById('movieList');
@@ -101,12 +181,13 @@
           const movieCard = document.createElement('div');
           movieCard.classList.add('movie-card');
           movieCard.innerHTML = `
-            <img src="${movie.poster || '#'}" alt="海報">
+            <img src="${movie.poster || '#'}" alt="海報" onerror="this.src='https://via.placeholder.com/100x150'">
             <h2>${movie.title}</h2>
             <p>${movie.description}</p>
             <p>類型: ${movie.genre}</p>
             <p>上映年份: ${movie.releaseYear}</p>
-            <button onclick="deleteMovie('${movie._id}')">刪除</button>
+            <button class="edit-btn" onclick="editMovie('${movie._id}')">編輯</button>
+            <button class="delete-btn" onclick="deleteMovie('${movie._id}')">刪除</button>
           `;
           movieList.appendChild(movieCard);
         });
@@ -115,9 +196,75 @@
       }
     }
 
-    async function deleteMovie(id) {
+    function searchMovies() {
+      const searchTerm = document.getElementById('searchInput').value;
+      fetchMovies(searchTerm);
+    }
+
+    async function editMovie(id) {
       try {
-        const response = await fetch(`http://localhost:3000/api/movies/${id}`, {
+        const response = await fetch(`http://localhost:3001/api/movies/${id}`);
+        if (!response.ok) throw new Error('無法獲取電影資料');
+        const movie = await response.json();
+        
+        // 填入表單資料
+        document.getElementById('editId').value = movie._id;
+        document.getElementById('editTitle').value = movie.title;
+        document.getElementById('editDescription').value = movie.description;
+        document.getElementById('editGenre').value = movie.genre;
+        document.getElementById('editPoster').value = movie.poster || '';
+        document.getElementById('editReleaseYear').value = movie.releaseYear;
+        
+        // 顯示 Modal
+        modal.style.display = 'block';
+      } catch (error) {
+        console.error(error);
+        alert('無法載入電影資料');
+      }
+    }
+
+    function closeEditModal() {
+      modal.style.display = 'none';
+    }
+
+    // 點擊 Modal 外面關閉
+    window.onclick = function(event) {
+      if (event.target == modal) {
+        modal.style.display = 'none';
+      }
+    }
+
+    document.getElementById('editForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const id = document.getElementById('editId').value;
+      const formData = {
+        title: document.getElementById('editTitle').value,
+        description: document.getElementById('editDescription').value,
+        genre: document.getElementById('editGenre').value,
+        poster: document.getElementById('editPoster').value,
+        releaseYear: document.getElementById('editReleaseYear').value,
+      };
+
+      try {
+        const response = await fetch(`http://localhost:3001/api/movies/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData),
+        });
+        if (!response.ok) throw new Error('更新電影失敗');
+        alert('更新電影成功');
+        closeEditModal();
+        fetchMovies();
+      } catch (error) {
+        console.error(error);
+        alert('更新失敗');
+      }
+    });
+
+    async function deleteMovie(id) {
+      if (!confirm('確定要刪除這部電影嗎？')) return;
+      try {
+        const response = await fetch(`http://localhost:3001/api/movies/${id}`, {
           method: 'DELETE',
         });
         if (!response.ok) throw new Error('刪除失敗');
@@ -125,6 +272,7 @@
         fetchMovies();
       } catch (error) {
         console.error(error);
+        alert('刪除失敗');
       }
     }
 
@@ -140,7 +288,7 @@
       };
 
       try {
-        const response = await fetch('http://localhost:3000/api/movies', {
+        const response = await fetch('http://localhost:3001/api/movies', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData),
@@ -151,9 +299,11 @@
         fetchMovies();
       } catch (error) {
         console.error(error);
+        alert('新增失敗');
       }
     });
 
+    // 初始載入電影列表
     fetchMovies();
   </script>
 </body>
