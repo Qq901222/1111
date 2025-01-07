@@ -15,7 +15,6 @@ document.getElementById('movieForm').addEventListener('submit', async (e) => {
   };
 
   try {
-    // 根據模式決定 URL 和方法
     const url = isEdit ? `/api/movies/${movieId}` : '/api/movies';
     const method = isEdit ? 'PUT' : 'POST';
     
@@ -28,13 +27,12 @@ document.getElementById('movieForm').addEventListener('submit', async (e) => {
     });
 
     if (response.ok) {
-      // 重置表單和狀態
       form.reset();
       if (isEdit) {
         form.dataset.mode = 'add';
         delete form.dataset.movieId;
       }
-      loadMovies(); // 重新載入電影列表
+      loadMovies();
     }
   } catch (error) {
     console.error(isEdit ? '更新電影失敗:' : '新增電影失敗:', error);
@@ -48,13 +46,11 @@ async function loadMovies() {
     const movies = await response.json();
     const movieList = document.getElementById('movieList');
     
-    // 確保 movies 是陣列
     if (!Array.isArray(movies)) {
       console.error('收到的資料不是陣列:', movies);
       return;
     }
     
-    // 避免 XSS 攻擊的簡單函數
     const escapeHtml = (str) => {
       if (str === null || str === undefined) return '';
       return str.toString()
@@ -66,20 +62,30 @@ async function loadMovies() {
     };
 
     movieList.innerHTML = movies.map(movie => {
-      // 檢查必要的電影屬性是否存在
       if (!movie || !movie._id) {
         console.error('電影資料不完整:', movie);
         return '';
       }
 
+      const defaultPoster = 'https://placehold.co/200x300?text=No+Poster';
+      const posterUrl = movie.poster || defaultPoster;
+
       return `
         <div class="movie-item">
-          <h3>${escapeHtml(movie.title)}</h3>
-          <p>${escapeHtml(movie.description)}</p>
-          <p>類型: ${escapeHtml(movie.genre)}</p>
-          <p>年份: ${escapeHtml(movie.releaseYear)}</p>
-          <button onclick="editMovie('${escapeHtml(movie._id)}')" class="edit-btn">編輯</button>
-          <button onclick="deleteMovie('${escapeHtml(movie._id)}')" class="delete-btn">刪除</button>
+          <img src="${escapeHtml(posterUrl)}" 
+               alt="${escapeHtml(movie.title)}" 
+               class="movie-poster"
+               onerror="this.src='${defaultPoster}'; this.onerror=null;">
+          <div class="movie-info">
+            <h3>${escapeHtml(movie.title)}</h3>
+            <p>${escapeHtml(movie.description)}</p>
+            <p>類型: ${escapeHtml(movie.genre)}</p>
+            <p>年份: ${escapeHtml(movie.releaseYear)}</p>
+            <div class="movie-actions">
+              <button onclick="editMovie('${escapeHtml(movie._id)}')" class="edit-btn">編輯</button>
+              <button onclick="deleteMovie('${escapeHtml(movie._id)}')" class="delete-btn">刪除</button>
+            </div>
+          </div>
         </div>
       `;
     }).join('');
@@ -99,7 +105,7 @@ async function deleteMovie(id) {
       method: 'DELETE'
     });
     if (response.ok) {
-      loadMovies(); // 重新載入電影列表
+      loadMovies();
     }
   } catch (error) {
     console.error('刪除電影失敗:', error);
@@ -116,14 +122,24 @@ document.querySelector('.search-form').addEventListener('submit', async (e) => {
     const movies = await response.json();
     
     const movieList = document.getElementById('movieList');
+    const defaultPoster = 'https://placehold.co/200x300?text=No+Poster';
+
     movieList.innerHTML = movies.map(movie => `
       <div class="movie-item">
-        <h3>${movie.title}</h3>
-        <p>${movie.description}</p>
-        <p>類型: ${movie.genre}</p>
-        <p>年份: ${movie.releaseYear}</p>
-        <button onclick="editMovie('${movie._id}')" class="edit-btn">編輯</button>
-        <button onclick="deleteMovie('${movie._id}')" class="delete-btn">刪除</button>
+        <img src="${movie.poster || defaultPoster}" 
+             alt="${movie.title}" 
+             class="movie-poster"
+             onerror="this.src='${defaultPoster}'; this.onerror=null;">
+        <div class="movie-info">
+          <h3>${movie.title}</h3>
+          <p>${movie.description}</p>
+          <p>類型: ${movie.genre}</p>
+          <p>年份: ${movie.releaseYear}</p>
+          <div class="movie-actions">
+            <button onclick="editMovie('${movie._id}')" class="edit-btn">編輯</button>
+            <button onclick="deleteMovie('${movie._id}')" class="delete-btn">刪除</button>
+          </div>
+        </div>
       </div>
     `).join('');
   } catch (error) {
@@ -137,14 +153,12 @@ async function editMovie(id) {
     const response = await fetch(`/api/movies/${id}`);
     const movie = await response.json();
     
-    // 填充表單
     document.querySelector('input[name="title"]').value = movie.title;
     document.querySelector('textarea[name="description"]').value = movie.description;
     document.querySelector('input[name="genre"]').value = movie.genre;
     document.querySelector('input[name="poster"]').value = movie.poster || '';
     document.querySelector('input[name="releaseYear"]').value = movie.releaseYear;
     
-    // 修改表單提交行為
     const form = document.getElementById('movieForm');
     form.dataset.mode = 'edit';
     form.dataset.movieId = id;
@@ -157,3 +171,61 @@ async function editMovie(id) {
 document.addEventListener('DOMContentLoaded', () => {
   loadMovies();
 });
+
+// 添加樣式
+const style = document.createElement('style');
+style.textContent = `
+  .movie-item {
+    border: 1px solid #ddd;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    display: flex;
+    gap: 20px;
+    background: white;
+  }
+
+  .movie-poster {
+    width: 200px;
+    height: 300px;
+    object-fit: cover;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  .movie-info {
+    flex: 1;
+  }
+
+  .movie-actions {
+    margin-top: 15px;
+  }
+
+  .edit-btn, .delete-btn {
+    padding: 8px 16px;
+    margin-right: 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  .edit-btn {
+    background-color: #4CAF50;
+    color: white;
+  }
+
+  .delete-btn {
+    background-color: #f44336;
+    color: white;
+  }
+
+  .edit-btn:hover {
+    background-color: #45a049;
+  }
+
+  .delete-btn:hover {
+    background-color: #da190b;
+  }
+`;
+
+document.head.appendChild(style);
