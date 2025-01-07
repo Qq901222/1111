@@ -20,9 +20,9 @@ const cors_1 = __importDefault(require("cors"));
 const app = (0, express_1.default)();
 const PORT = 3001;
 // Middleware
-app.use(express_1.default.json()); // 處理 JSON 請求
-app.use((0, cors_1.default)()); // 啟用 CORS
-app.use(express_1.default.static(path_1.default.join(__dirname, 'client'))); // 提供靜態檔案
+app.use(express_1.default.json());
+app.use((0, cors_1.default)());
+app.use(express_1.default.static(path_1.default.join(__dirname, 'client')));
 // MongoDB 連接設定
 const MONGO_URI = 'mongodb://localhost:27017/movie-ticket-system';
 mongoose_1.default
@@ -42,6 +42,33 @@ const movieSchema = new mongoose_1.default.Schema({
 });
 const Movie = mongoose_1.default.model('Movie', movieSchema);
 // API 路由
+// 搜尋電影
+app.get('/api/movies/search', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { title } = req.query;
+        const movies = yield Movie.find({
+            title: { $regex: title, $options: 'i' }
+        });
+        res.json(movies);
+    }
+    catch (err) {
+        res.status(500).json({ message: '搜尋電影失敗', error: err });
+    }
+}));
+// 獲取單一電影詳情
+app.get('/api/movies/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const movie = yield Movie.findById(req.params.id);
+        if (!movie) {
+            return res.status(404).json({ message: '找不到該電影' });
+        }
+        res.json(movie);
+    }
+    catch (err) {
+        res.status(500).json({ message: '獲取電影詳情失敗', error: err });
+    }
+}));
+// 獲取所有電影
 app.get('/api/movies', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const movies = yield Movie.find();
@@ -51,6 +78,7 @@ app.get('/api/movies', (req, res) => __awaiter(void 0, void 0, void 0, function*
         res.status(500).json({ message: '查詢電影失敗', error: err });
     }
 }));
+// 新增電影
 app.post('/api/movies', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const movie = new Movie(req.body);
@@ -61,6 +89,22 @@ app.post('/api/movies', (req, res) => __awaiter(void 0, void 0, void 0, function
         res.status(500).json({ message: '新增電影失敗', error: err });
     }
 }));
+// 更新電影
+app.put('/api/movies/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const updatedMovie = yield Movie.findByIdAndUpdate(req.params.id, req.body, {
+            new: true, // 回傳更新後的文件
+            runValidators: true, // 確保資料符合 Schema
+        });
+        if (!updatedMovie)
+            return res.status(404).json({ message: '找不到該電影' });
+        res.json({ message: '更新電影成功', data: updatedMovie });
+    }
+    catch (err) {
+        res.status(500).json({ message: '更新電影失敗', error: err });
+    }
+}));
+// 刪除電影
 app.delete('/api/movies/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const deletedMovie = yield Movie.findByIdAndDelete(req.params.id);
@@ -72,6 +116,10 @@ app.delete('/api/movies/:id', (req, res) => __awaiter(void 0, void 0, void 0, fu
         res.status(500).json({ message: '刪除電影失敗', error: err });
     }
 }));
+// 處理前端路由
+app.get('*', (req, res) => {
+    res.sendFile(path_1.default.join(__dirname, 'client', 'index.html'));
+});
 // 啟動伺服器
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);

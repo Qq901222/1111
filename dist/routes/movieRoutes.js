@@ -15,29 +15,64 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const Movie_1 = __importDefault(require("../models/Movie"));
 const router = express_1.default.Router();
-// 新增電影
-router.post("/", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+// 獲取所有電影
+router.get('/', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { title, description, genre, poster, releaseYear } = req.body;
-        if (isNaN(releaseYear)) {
-            return res.status(400).json({ message: "上映年份必須是數字" });
-        }
-        const movie = new Movie_1.default({ title, description, genre, poster, releaseYear });
-        const savedMovie = yield movie.save();
-        res.status(201).json({ message: "電影新增成功", data: savedMovie });
-    }
-    catch (error) {
-        res.status(500).json({ message: "新增電影失敗", error });
-    }
-}));
-// 查詢所有電影
-router.get("/", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        const movies = yield Movie_1.default.find();
+        const movies = yield Movie_1.default.find().sort({ createdAt: -1 });
         res.json(movies);
     }
     catch (error) {
-        res.status(500).json({ message: "查詢電影失敗", error });
+        res.status(500).json({ message: '獲取電影列表失敗', error });
+    }
+}));
+// 獲取單一電影
+router.get('/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const movie = yield Movie_1.default.findById(req.params.id);
+        if (!movie) {
+            return res.status(404).json({ message: '找不到該電影' });
+        }
+        res.json(movie);
+    }
+    catch (error) {
+        res.status(500).json({ message: '獲取電影資訊失敗', error });
+    }
+}));
+// 新增電影
+router.post('/', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const movie = new Movie_1.default(req.body);
+        const savedMovie = yield movie.save();
+        res.status(201).json(savedMovie);
+    }
+    catch (error) {
+        res.status(400).json({ message: '新增電影失敗', error });
+    }
+}));
+// 更新電影
+router.put('/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const movie = yield Movie_1.default.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+        if (!movie) {
+            return res.status(404).json({ message: '找不到該電影' });
+        }
+        res.json(movie);
+    }
+    catch (error) {
+        res.status(400).json({ message: '更新電影失敗', error });
+    }
+}));
+// 刪除電影
+router.delete('/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const movie = yield Movie_1.default.findByIdAndDelete(req.params.id);
+        if (!movie) {
+            return res.status(404).json({ message: '找不到該電影' });
+        }
+        res.json({ message: '刪除成功', movie });
+    }
+    catch (error) {
+        res.status(500).json({ message: '刪除電影失敗', error });
     }
 }));
 exports.default = router;
